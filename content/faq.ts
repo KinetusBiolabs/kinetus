@@ -32,7 +32,7 @@ export const faqDocument: FaqDocument = {
           answer: [
             {
               type: "paragraph",
-              text: "Shipping rates are calculated at checkout based on your delivery location, order size, and available shipping options.  All Orders over $199.00 are shipped for free.",
+              text: "Shipping rates are calculated at checkout based on your delivery location, order size, and available shipping options.  All Orders over {{FREE_SHIPPING_THRESHOLD}} are shipped for free.",
             },
           ],
         },

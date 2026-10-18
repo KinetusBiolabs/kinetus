@@ -3,6 +3,7 @@ import styles from "@/components/admin/admin.module.css";
 import { requireAdmin } from "@/lib/admin/auth";
 import { bpsToInput, centsToInput } from "@/lib/admin/forms";
 import { prisma } from "@/lib/db";
+import { DEFAULT_FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/shipping";
 import { ProductPageTextForm, StoreSettingsForm, TaxRatesForm } from "./SettingsForms";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -49,9 +50,9 @@ export default async function SettingsPage() {
       <div className={`${styles.notice} ${styles.noticeInfo}`}>
         <p>
           The cart and checkout use these values: the shipping charge and free-shipping rules apply
-          to every order, and tax is charged only while it is switched on. The shipping line at the
-          top of every page and the Shipping Policy are fixed text and do not change when these
-          values do.
+          to every order, and tax is charged only while it is switched on. The free shipping
+          threshold is also the amount quoted at the top of every page, in the Shipping Policy and
+          in the FAQ.
         </p>
       </div>
 
@@ -60,7 +61,9 @@ export default async function SettingsPage() {
           taxEnabled: settings?.taxEnabled ?? false,
           gstNumber: settings?.gstNumber ?? "",
           shippingFlat: centsToInput(settings?.shippingFlatCents ?? 2000),
-          freeShippingThreshold: centsToInput(settings?.freeShippingThresholdCents ?? 19900),
+          freeShippingThreshold: centsToInput(
+            settings?.freeShippingThresholdCents ?? DEFAULT_FREE_SHIPPING_THRESHOLD_CENTS,
+          ),
           localFreeCity: settings?.localFreeCity ?? "",
           shipsInternationally: settings?.shipsInternationally ?? false,
           orderNotifyEmail: settings?.orderNotifyEmail ?? "",

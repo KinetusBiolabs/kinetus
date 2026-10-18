@@ -352,7 +352,8 @@ model StoreSetting {
   taxEnabled                 Boolean  @default(false)
   gstNumber                  String?
   shippingFlatCents          Int      @default(2000)
-  freeShippingThresholdCents Int      @default(19900)
+  /// Admin > Settings; quoted across the site through lib/shipping.ts.
+  freeShippingThresholdCents Int      @default(24900)
   localFreeCity              String?  @default("Calgary")
   shipsInternationally       Boolean  @default(false)
   /// Shown to customers on the order confirmation page and in their email.

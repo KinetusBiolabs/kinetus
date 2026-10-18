@@ -10,11 +10,13 @@ import { unstable_cache } from "next/cache";
  *   collections       anything that shows collection data
  *   collection:<slug> one collection page, including a retired slug
  *   nav               navigation built from the catalogue
+ *   shipping          the free-shipping amount, quoted on every public page
  */
 export const CACHE_TAGS = {
   products: "products",
   collections: "collections",
   nav: "nav",
+  shipping: "shipping",
   product: (slug: string) => `product:${slug}`,
   collection: (slug: string) => `collection:${slug}`,
 } as const;

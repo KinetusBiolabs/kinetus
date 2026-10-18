@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { Container } from "./Container";
 import { TruckIcon } from "@/components/icons/LineIcons";
-import { SHIPPING_LINE, UTILITY_BAR_LINES } from "@/lib/site";
+import { UTILITY_BAR_LINES } from "@/lib/site";
 import styles from "./UtilityBar.module.css";
 
 /**
  * Utility bar above the header (deck slide 4): a navy strip with the two packaging strings
  * on the left, a bullet between them, and the shipping line on the right linking to the
  * shipping policy. The shipping item hides on mobile. The bar sits outside the sticky
- * header so it scrolls away with the page.
+ * header so it scrolls away with the page. `shippingLine` carries the Admin > Settings
+ * free-shipping amount (lib/shipping.ts).
  */
-export function UtilityBar() {
+export function UtilityBar({ shippingLine }: { shippingLine: string }) {
   return (
     <div className={styles.bar}>
       <Container className={styles.row}>
@@ -28,7 +29,7 @@ export function UtilityBar() {
 
         <Link href="/shipping-policy" className={styles.shipping}>
           <TruckIcon size={22} className={styles.shippingIcon} />
-          <span>{SHIPPING_LINE}</span>
+          <span>{shippingLine}</span>
         </Link>
       </Container>
     </div>

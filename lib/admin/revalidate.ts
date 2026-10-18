@@ -42,6 +42,16 @@ export function expireVolumeTierPages(): void {
   refreshAdmin();
 }
 
+/**
+ * After a store settings save: the free-shipping amount appears on every public page (the
+ * utility bar), the Shipping Policy and the FAQ, all read under the `shipping` tag. The
+ * cart and checkout read settings per request and need nothing.
+ */
+export function expireShippingAmount(): void {
+  revalidateTag(CACHE_TAGS.shipping, EXPIRE_NOW);
+  refreshAdmin();
+}
+
 /** Admin pages are rendered per request; this refreshes the one the save came from. */
 export function refreshAdmin(): void {
   revalidatePath("/admin", "layout");

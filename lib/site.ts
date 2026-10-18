@@ -19,13 +19,6 @@ export const RESEARCH_USE_COPY = RESEARCH_USE_COPY_LINES.join(" ");
 /** Utility-bar strings, verbatim from the client's packaging and the approved deck. */
 export const UTILITY_BAR_LINES = ["RESEARCH USE ONLY", "NOT FOR HUMAN CONSUMPTION."] as const;
 
-/**
- * Utility-bar shipping line, verbatim from the approved deck (slide 4). The threshold is
- * confirmed by the client's Shipping Policy ("Orders over $199 CAD qualify for free
- * shipping within Canada.").
- */
-export const SHIPPING_LINE = "FREE SHIPPING ON ORDERS OVER $199 (CAN)";
-
 /** Packaging tagline, verbatim. */
 export const TAGLINE = "PRECISION SCIENCE. PEAK POTENTIAL.";
 

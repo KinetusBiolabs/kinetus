@@ -10,8 +10,8 @@ type ShippingPanelProps = {
 
 /**
  * Shipping and delivery, from the store settings in the client's wording (Shipping Policy:
- * "Orders over $199 CAD qualify for free shipping within Canada"; Canada Post Priority
- * with tracking).
+ * "Orders over {amount} CAD qualify for free shipping within Canada", the amount from
+ * Admin > Settings; Canada Post Priority with tracking).
  */
 export function ShippingPanel({
   shippingFlatCents,

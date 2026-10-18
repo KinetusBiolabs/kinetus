@@ -78,7 +78,7 @@ export const shippingPolicyDocument: PolicyDocument = {
         },
         {
           type: "paragraph",
-          text: "Orders over $199 CAD qualify for free shipping within Canada.",
+          text: "Orders over {{FREE_SHIPPING_THRESHOLD}} CAD qualify for free shipping within Canada.",
           emphasis: true,
         },
       ],

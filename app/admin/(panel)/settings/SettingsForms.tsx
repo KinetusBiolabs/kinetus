@@ -84,14 +84,14 @@ export function StoreSettingsForm({ settings }: { settings: SettingsData }) {
               error={errors.shippingFlat}
             />
             <TextField
-              label="Free shipping on orders over"
+              label="Free shipping threshold ($)"
               name="freeShippingThreshold"
               prefix="$"
               inputMode="decimal"
               mono
               defaultValue={value("freeShippingThreshold", settings.freeShippingThreshold)}
               error={errors.freeShippingThreshold}
-              hint="Canada only."
+              hint="Shown across the site (cart, shipping policy, FAQ). Changing it updates everything."
             />
             <TextField
               label="City with free local shipping"

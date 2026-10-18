@@ -13,7 +13,6 @@ import {
 } from "@/components/icons/LineIcons";
 import {
   HEADER_ICON_LINKS,
-  SHIPPING_LINE,
   SITE_NAME,
   UTILITY_BAR_LINES,
   type NavItem,
@@ -32,6 +31,8 @@ type MobileNavProps = {
   items: NavItem[];
   /** Shown above the desktop breakpoint too, when the desktop nav would overflow. */
   forceVisible?: boolean;
+  /** The utility bar's free-shipping line, with the Admin > Settings amount. */
+  shippingLine: string;
 };
 
 /**
@@ -42,7 +43,7 @@ type MobileNavProps = {
  * bottom. Focus is trapped inside the drawer while open, body scroll is locked, Escape
  * closes, and focus returns to the trigger.
  */
-export function MobileNav({ items, forceVisible = false }: MobileNavProps) {
+export function MobileNav({ items, forceVisible = false, shippingLine }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const drawerId = useId();
@@ -269,7 +270,7 @@ export function MobileNav({ items, forceVisible = false }: MobileNavProps) {
             </p>
             <Link href="/shipping-policy" className={styles.shipping} onClick={close}>
               <TruckIcon size={20} className={styles.secondaryIcon} />
-              <span>{SHIPPING_LINE}</span>
+              <span>{shippingLine}</span>
             </Link>
           </Container>
         </div>

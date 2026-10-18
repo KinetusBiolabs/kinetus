@@ -492,6 +492,89 @@ export async function saveProduct(_previous: FormState, form: FormData): Promise
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Deleting a size (strength)                                                */
+/* -------------------------------------------------------------------------- */
+
+export type DeleteVariantResult = { status: "ok" | "error"; message: string };
+
+/**
+ * Deletes one size of a product. Refused when it is the product's last size, when it would
+ * leave a published product with no active size, or when any order line points at it:
+ * order lines keep a snapshot of the name, size and price, but their link to the size
+ * (used to put stock back when a paid order is cancelled) would be cleared, so those sizes
+ * are archived instead. Its renders go with it (the database cascades), and their files
+ * are removed from storage afterwards.
+ */
+export async function deleteVariant(
+  productId: unknown,
+  variantId: unknown,
+): Promise<DeleteVariantResult> {
+  await requireAdmin();
+  if (typeof productId !== "string" || typeof variantId !== "string") {
+    return { status: "error", message: "This size no longer exists. Reload the page." };
+  }
+
+  type Outcome = { slug: string; imageUrls: string[] } | DeleteVariantResult;
+  let outcome: Outcome;
+  try {
+    outcome = await prisma.$transaction(async (tx): Promise<Outcome> => {
+      const product = await tx.product.findUnique({
+        where: { id: productId },
+        select: {
+          slug: true,
+          status: true,
+          variants: { select: { id: true, status: true } },
+        },
+      });
+      if (!product || !product.variants.some((variant) => variant.id === variantId)) {
+        return { status: "error", message: "This size no longer exists. Reload the page." };
+      }
+      const remaining = product.variants.filter((variant) => variant.id !== variantId);
+      if (remaining.length === 0) {
+        return {
+          status: "error",
+          message:
+            "A product needs at least one strength. To take the whole product off the site, archive it.",
+        };
+      }
+      if (
+        product.status === ProductStatus.PUBLISHED &&
+        !remaining.some((variant) => variant.status === VariantStatus.ACTIVE)
+      ) {
+        return {
+          status: "error",
+          message: "A published product needs at least one active size with a price.",
+        };
+      }
+      const onOrders = await tx.orderRequestItem.count({ where: { variantId } });
+      if (onOrders > 0) {
+        return {
+          status: "error",
+          message:
+            "This strength is on existing orders, so it can't be deleted. To hide it from the site, set its status to Archived and save.",
+        };
+      }
+      const images = await tx.productImage.findMany({
+        where: { variantId },
+        select: { url: true },
+      });
+      await tx.productVariant.delete({ where: { id: variantId } });
+      return { slug: product.slug, imageUrls: images.map((image) => image.url) };
+    }, TRANSACTION_OPTIONS);
+  } catch (error) {
+    console.error("[admin] Could not delete size:", variantId, error);
+    return { status: "error", message: "The size could not be deleted. Please try again." };
+  }
+
+  if ("status" in outcome) {
+    return outcome;
+  }
+  await deleteStoredImages(outcome.imageUrls);
+  expireProductPages(outcome.slug);
+  return { status: "ok", message: "Size deleted." };
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Images                                                                    */
 /* -------------------------------------------------------------------------- */
 

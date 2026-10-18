@@ -16,6 +16,7 @@ import {
   type VolumeTier,
 } from "@/lib/pricing";
 import { imagesForVariant } from "@/lib/product-images";
+import { DEFAULT_FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/shipping";
 
 /**
  * The cart: `{ variantId, quantity }` pairs in an httpOnly cookie and nothing else. Every
@@ -257,7 +258,7 @@ export type PricingContext = {
 const DEFAULT_SETTINGS: PricingContext["settings"] = {
   taxEnabled: false,
   shippingFlatCents: 2000,
-  freeShippingThresholdCents: 19900,
+  freeShippingThresholdCents: DEFAULT_FREE_SHIPPING_THRESHOLD_CENTS,
   localFreeCity: "Calgary",
   etransferEmail: null,
   etransferInstructions: null,

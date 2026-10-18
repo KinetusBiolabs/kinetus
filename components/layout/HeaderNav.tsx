@@ -11,6 +11,8 @@ import styles from "./HeaderNav.module.css";
 
 type HeaderNavProps = {
   items: NavItem[];
+  /** The free-shipping line for the drawer (Header reads the amount). */
+  shippingLine: string;
 };
 
 /**
@@ -19,7 +21,7 @@ type HeaderNavProps = {
  * measured against the space beside the logo and, whenever it would overflow, it
  * collapses into the drawer instead.
  */
-export function HeaderNav({ items }: HeaderNavProps) {
+export function HeaderNav({ items, shippingLine }: HeaderNavProps) {
   const slotRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -87,7 +89,7 @@ export function HeaderNav({ items }: HeaderNavProps) {
 
       <IconLinks />
 
-      <MobileNav items={items} forceVisible={collapsed} />
+      <MobileNav items={items} forceVisible={collapsed} shippingLine={shippingLine} />
 
       <CartLink />
     </>

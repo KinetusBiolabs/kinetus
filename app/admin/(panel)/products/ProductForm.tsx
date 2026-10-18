@@ -1,13 +1,15 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useId, useRef, useState, useTransition } from "react";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ContentRule } from "@/components/admin/ContentRule";
 import { CheckboxField, SelectField, TextArea, TextField } from "@/components/admin/Fields";
 import { FormNotice, SaveBar } from "@/components/admin/FormNotice";
 import styles from "@/components/admin/admin.module.css";
 import type { CollectionOption, ProductFormData, VariantFormData } from "@/lib/admin/catalogue";
 import { IDLE_STATE, slugify, STORE_TIME_ZONE_LABEL, type FormState } from "@/lib/admin/forms";
-import { saveProduct } from "./actions";
+import { deleteVariant, saveProduct } from "./actions";
 
 type ProductFormProps = {
   product: ProductFormData;
@@ -285,7 +287,12 @@ function ProductFields({ state, product, collections, isNew }: FieldsProps) {
         </div>
       </section>
 
-      <SizesSection variants={product.variants} echoed={echoed} errors={state.errors ?? {}} />
+      <SizesSection
+        productId={product.id}
+        variants={product.variants}
+        echoed={echoed}
+        errors={state.errors ?? {}}
+      />
 
       <section className={styles.panel} aria-labelledby="collections-heading">
         <h2 id="collections-heading" className={styles.panelTitle}>
@@ -353,6 +360,8 @@ function ProductFields({ state, product, collections, isNew }: FieldsProps) {
 }
 
 type SizesProps = {
+  /** Null while the product is being created: sizes can be removed once it is saved. */
+  productId: string | null;
   variants: VariantFormData[];
   echoed: Record<string, string> | undefined;
   errors: Record<string, string>;
@@ -374,7 +383,7 @@ const BLANK_VARIANT: Omit<VariantFormData, "key"> = {
 };
 
 /** Existing sizes, then blank rows for new ones ("Add another size" adds more). */
-function SizesSection({ variants, echoed, errors }: SizesProps) {
+function SizesSection({ productId, variants, echoed, errors }: SizesProps) {
   const echoedNewRows = echoed
     ? (echoed.variantKeys ?? "").split("\n").filter((key) => key.startsWith("new-")).length
     : 0;
@@ -399,7 +408,7 @@ function SizesSection({ variants, echoed, errors }: SizesProps) {
       <ul className={styles.cards}>
         {rows.map((row) => (
           <li key={row.key}>
-            <VariantCard row={row} echoed={echoed} errors={errors} />
+            <VariantCard productId={productId} row={row} echoed={echoed} errors={errors} />
           </li>
         ))}
       </ul>
@@ -417,11 +426,101 @@ function SizesSection({ variants, echoed, errors }: SizesProps) {
   );
 }
 
+/**
+ * A saved size's Remove control: asks first, then deletes the size on the
+ * server (deleteVariant), which refuses the product's last size and any size on an order.
+ * The dialog uses buttons, not a form, because the card sits inside the product form.
+ */
+function RemoveVariant({
+  productId,
+  variantId,
+  label,
+}: {
+  productId: string;
+  variantId: string;
+  label: string;
+}) {
+  const router = useRouter();
+  const titleId = useId();
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const onConfirm = () => {
+    startTransition(async () => {
+      try {
+        const result = await deleteVariant(productId, variantId);
+        setOpen(false);
+        if (result.status === "ok") {
+          // The page re-reads the product, so this card goes and the images list updates.
+          router.refresh();
+        } else {
+          setMessage(result.message);
+        }
+      } catch {
+        setOpen(false);
+        setMessage("The size could not be deleted. Please try again.");
+      }
+    });
+  };
+
+  return (
+    <div className={styles.cardNote}>
+      <button
+        type="button"
+        className={styles.textButton}
+        onClick={() => {
+          setMessage(null);
+          setOpen(true);
+        }}
+      >
+        Remove
+      </button>
+      {message && (
+        <p className={styles.error} role="alert">
+          {message}
+        </p>
+      )}
+      <ConfirmDialog open={open} onClose={() => setOpen(false)} labelledBy={titleId}>
+        <div className={styles.dialogBody}>
+          <h2 id={titleId} className={styles.dialogTitle}>
+            Delete the {label} size?
+          </h2>
+          <p className={styles.dialogText}>
+            This deletes the size, its price and its own images straight away. It cannot be
+            undone.
+          </p>
+          <div className={styles.dialogActions}>
+            <button
+              type="button"
+              className={`${styles.button} ${styles.danger}`}
+              onClick={onConfirm}
+              disabled={pending}
+            >
+              {pending ? "Deleting…" : "Delete size"}
+            </button>
+            <button
+              type="button"
+              className={`${styles.button} ${styles.secondary}`}
+              onClick={() => setOpen(false)}
+              data-initial-focus
+            >
+              Go back
+            </button>
+          </div>
+        </div>
+      </ConfirmDialog>
+    </div>
+  );
+}
+
 function VariantCard({
+  productId,
   row,
   echoed,
   errors,
 }: {
+  productId: string | null;
   row: VariantFormData;
   echoed: Record<string, string> | undefined;
   errors: Record<string, string>;
@@ -555,6 +654,9 @@ function VariantCard({
           }
         />
       </div>
+      {!isNew && productId && (
+        <RemoveVariant productId={productId} variantId={row.key} label={row.label} />
+      )}
     </fieldset>
   );
 }

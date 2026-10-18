@@ -11,7 +11,7 @@ import {
   text,
   type FormState,
 } from "@/lib/admin/forms";
-import { expireProductPages, refreshAdmin } from "@/lib/admin/revalidate";
+import { expireProductPages, expireShippingAmount, refreshAdmin } from "@/lib/admin/revalidate";
 import { prisma } from "@/lib/db";
 
 const SETTINGS_ID = "store";
@@ -39,9 +39,9 @@ export async function saveStoreSettings(_previous: FormState, form: FormData): P
     errors.shippingFlat = "Enter the flat shipping charge in dollars, for example 20.00.";
   }
   const threshold = parseDollars(text(form, "freeShippingThreshold"));
-  if (threshold === null || threshold > 10_000_000) {
+  if (threshold === null || threshold <= 0 || threshold > 10_000_000) {
     errors.freeShippingThreshold =
-      "Enter the order total for free shipping in dollars, for example 199.00.";
+      "Enter the free shipping threshold in dollars, more than 0 and with up to 2 decimals, for example 249.00.";
   }
   const localFreeCity = optionalText(form, "localFreeCity");
   if (localFreeCity !== null && localFreeCity.length > 80) {
@@ -103,7 +103,8 @@ export async function saveStoreSettings(_previous: FormState, form: FormData): P
     create: { id: SETTINGS_ID, ...data },
     update: data,
   });
-  refreshAdmin();
+  // The free-shipping amount is quoted on every public page; this also refreshes the admin.
+  expireShippingAmount();
   return successState(
     taxEnabled
       ? "Settings saved. Sales tax is switched on and is charged on new orders."

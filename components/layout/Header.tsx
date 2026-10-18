@@ -4,6 +4,7 @@ import { Container } from "./Container";
 import { HeaderNav } from "./HeaderNav";
 import { UtilityBar } from "./UtilityBar";
 import { getPrimaryNav } from "@/lib/navigation";
+import { freeShippingLine, getFreeShippingThresholdCents } from "@/lib/shipping";
 import { SITE_NAME } from "@/lib/site";
 import styles from "./Header.module.css";
 
@@ -17,10 +18,15 @@ const LOGO = { src: "/brand/kinetus-logo-horizontal.png", width: 270, height: 64
  * published ranges (lib/navigation.ts, cached under the `nav` tag) plus fixed items. The utility bar is outside the sticky element so it scrolls away.
  */
 export async function Header() {
-  const items = await getPrimaryNav();
+  const [items, threshold] = await Promise.all([
+    getPrimaryNav(),
+    getFreeShippingThresholdCents(),
+  ]);
+  // Admin > Settings free-shipping amount, in the utility bar and the mobile drawer.
+  const shippingLine = freeShippingLine(threshold);
   return (
     <>
-      <UtilityBar />
+      <UtilityBar shippingLine={shippingLine} />
       <header className={styles.header}>
         <Container className={styles.row}>
           <Link href="/" className={styles.logoLink} aria-label={`${SITE_NAME} home`}>
@@ -34,7 +40,7 @@ export async function Header() {
             />
           </Link>
 
-          <HeaderNav items={items} />
+          <HeaderNav items={items} shippingLine={shippingLine} />
         </Container>
       </header>
     </>
