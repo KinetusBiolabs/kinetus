@@ -11,6 +11,7 @@ import {
   signSessionToken,
   verifySessionToken,
 } from "./session";
+import { passwordProblem } from "./password-rules";
 
 /**
  * Server-side admin authentication: the data access layer every admin page and server
@@ -93,20 +94,13 @@ export async function clientIp(): Promise<string> {
   return forwarded || requestHeaders.get("x-real-ip")?.trim() || "unknown";
 }
 
-export type LoginResult = { ok: true } | { ok: false; error: string };
-
 /**
- * Checks the rate limit, then the credentials, records the attempt, and on success starts
- * a session. Failures never say whether the email exists.
+ * The sign-in throttle: the refusal to show while this network address or this email has
+ * too many failed attempts in the window, or null while both are under the limits. Wrong
+ * current passwords on the Change password form count as failed attempts too.
  */
-export async function attemptLogin(
-  emailInput: string,
-  password: string,
-  ip: string,
-): Promise<LoginResult> {
-  const email = emailInput.trim().toLowerCase();
+async function throttleError(ip: string, email: string): Promise<string | null> {
   const since = new Date(Date.now() - RATE_WINDOW_MS);
-
   const [ipFailures, emailFailures] = await Promise.all([
     prisma.adminLoginAttempt.findMany({
       where: { ip, success: false, createdAt: { gte: since } },
@@ -120,10 +114,27 @@ export async function attemptLogin(
   if (ipFailures.length >= MAX_FAILURES_PER_IP || emailFailures >= MAX_FAILURES_PER_EMAIL) {
     const oldest = ipFailures[0]?.createdAt.getTime() ?? Date.now();
     const minutes = Math.max(1, Math.ceil((oldest + RATE_WINDOW_MS - Date.now()) / 60000));
-    return {
-      ok: false,
-      error: `Too many failed sign-in attempts. Wait about ${ipFailures.length >= MAX_FAILURES_PER_IP ? minutes : 15} minutes, then try again.`,
-    };
+    return `Too many failed sign-in attempts. Wait about ${ipFailures.length >= MAX_FAILURES_PER_IP ? minutes : 15} minutes, then try again.`;
+  }
+  return null;
+}
+
+export type LoginResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Checks the rate limit, then the credentials, records the attempt, and on success starts
+ * a session. Failures never say whether the email exists.
+ */
+export async function attemptLogin(
+  emailInput: string,
+  password: string,
+  ip: string,
+): Promise<LoginResult> {
+  const email = emailInput.trim().toLowerCase();
+
+  const blocked = await throttleError(ip, email);
+  if (blocked) {
+    return { ok: false, error: blocked };
   }
 
   const user = await prisma.adminUser.findUnique({ where: { email } });
@@ -157,6 +168,72 @@ async function startSession(adminUserId: string): Promise<void> {
     path: ADMIN_COOKIE_PATH,
     expires: expiresAt,
   });
+}
+
+export type PasswordChangeResult =
+  | { ok: true; signedOut: number }
+  | {
+      ok: false;
+      error: string;
+      field: "currentPassword" | "newPassword" | "confirmPassword" | null;
+    };
+
+/**
+ * Changes the signed-in admin's password: throttle, then the current password (a wrong one
+ * is recorded as a failed sign-in attempt and nothing else is said), then the password
+ * rules, the confirmation, and that the new one differs. Hashes the way sign-in expects
+ * (bcrypt, BCRYPT_COST) and deletes every other session of this admin, keeping this one.
+ */
+export async function changePassword(
+  admin: AdminIdentity,
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string,
+  ip: string,
+): Promise<PasswordChangeResult> {
+  const blocked = await throttleError(ip, admin.email);
+  if (blocked) {
+    return { ok: false, error: blocked, field: null };
+  }
+
+  const user = await prisma.adminUser.findUnique({
+    where: { id: admin.id },
+    select: { email: true, passwordHash: true },
+  });
+  if (!user || !(await compare(currentPassword, user.passwordHash))) {
+    await prisma.adminLoginAttempt.create({
+      data: { ip, email: user?.email ?? admin.email, success: false },
+    });
+    return { ok: false, error: "The current password is not correct.", field: "currentPassword" };
+  }
+
+  const problem = passwordProblem(newPassword);
+  if (problem) {
+    return { ok: false, error: problem, field: "newPassword" };
+  }
+  if (confirmPassword !== newPassword) {
+    return {
+      ok: false,
+      error: "The new password and its confirmation do not match.",
+      field: "confirmPassword",
+    };
+  }
+  if (newPassword === currentPassword) {
+    return {
+      ok: false,
+      error: "The new password must be different from the current one.",
+      field: "newPassword",
+    };
+  }
+
+  const passwordHash = await hash(newPassword, BCRYPT_COST);
+  const [, signedOut] = await prisma.$transaction([
+    prisma.adminUser.update({ where: { id: admin.id }, data: { passwordHash } }),
+    prisma.adminSession.deleteMany({
+      where: { adminUserId: admin.id, id: { not: admin.sessionId } },
+    }),
+  ]);
+  return { ok: true, signedOut: signedOut.count };
 }
 
 /** Deletes this session's row and its cookie. */

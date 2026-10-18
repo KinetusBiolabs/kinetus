@@ -5,7 +5,12 @@ import { CheckboxField, TextArea, TextField } from "@/components/admin/Fields";
 import { FormNotice, SaveBar } from "@/components/admin/FormNotice";
 import styles from "@/components/admin/admin.module.css";
 import { IDLE_STATE } from "@/lib/admin/forms";
-import { saveProductPageText, saveStoreSettings, saveTaxRates } from "./actions";
+import {
+  changeAdminPassword,
+  saveProductPageText,
+  saveStoreSettings,
+  saveTaxRates,
+} from "./actions";
 
 export type SettingsData = {
   taxEnabled: boolean;
@@ -207,7 +212,62 @@ export function ProductPageTextForm({ introText }: { introText: string }) {
           />
         </div>
       </section>
-      <SaveBar state={state} label="Save product page text" idleText="Updates every product page." />
+      <SaveBar
+        state={state}
+        label="Save product page text"
+        idleText="Updates every product page."
+      />
+    </form>
+  );
+}
+
+/**
+ * Change password (the signed-in admin's own). The fields are never refilled: on any
+ * result they come back empty, and passwords are never sent back from the server.
+ */
+export function ChangePasswordForm() {
+  const [state, formAction] = useActionState(changeAdminPassword, IDLE_STATE);
+  const errors = state.errors ?? {};
+
+  return (
+    <form action={formAction} noValidate>
+      <section className={styles.panel} aria-labelledby="password-heading">
+        <h2 id="password-heading" className={styles.panelTitle}>
+          Change password
+        </h2>
+        <p className={styles.panelIntro}>
+          Changing it signs you out on every other device; this one stays signed in.
+        </p>
+        <FormNotice state={state} />
+        <div className={`${styles.grid} ${styles.grid3}`} key={state.savedAt ?? "initial"}>
+          <TextField
+            label="Current password"
+            name="currentPassword"
+            type="password"
+            autoComplete="current-password"
+            required
+            error={errors.currentPassword}
+          />
+          <TextField
+            label="New password"
+            name="newPassword"
+            type="password"
+            autoComplete="new-password"
+            required
+            error={errors.newPassword}
+            hint="At least 12 characters."
+          />
+          <TextField
+            label="Confirm new password"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            required
+            error={errors.confirmPassword}
+          />
+        </div>
+      </section>
+      <SaveBar state={state} label="Change password" idleText="Changes your sign-in password." />
     </form>
   );
 }

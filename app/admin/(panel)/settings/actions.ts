@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/admin/auth";
+import { changePassword, clientIp, requireAdmin } from "@/lib/admin/auth";
 import {
   checkbox,
   errorState,
@@ -139,6 +139,62 @@ export async function saveProductPageText(
       ? "Saved. Product pages show the default text on their next visit."
       : "Saved. Product pages show the new text on their next visit.",
   );
+}
+
+/**
+ * Change password: the signed-in admin's own. Passwords are read from the submission only;
+ * they are never echoed back (no `values` in the state), logged or put in a URL.
+ */
+export async function changeAdminPassword(
+  _previous: FormState,
+  form: FormData,
+): Promise<FormState> {
+  const admin = await requireAdmin();
+  const field = (name: string) => {
+    const value = form.get(name);
+    return typeof value === "string" ? value : "";
+  };
+  const currentPassword = field("currentPassword");
+  const newPassword = field("newPassword");
+  const confirmPassword = field("confirmPassword");
+
+  const missing: Record<string, string> = {};
+  if (!currentPassword) {
+    missing.currentPassword = "Enter your current password.";
+  }
+  if (!newPassword) {
+    missing.newPassword = "Enter a new password.";
+  }
+  if (!confirmPassword) {
+    missing.confirmPassword = "Enter the new password again to confirm it.";
+  }
+  if (Object.keys(missing).length > 0) {
+    return { status: "error", message: "Password not changed.", errors: missing };
+  }
+
+  const result = await changePassword(
+    admin,
+    currentPassword,
+    newPassword,
+    confirmPassword,
+    await clientIp(),
+  );
+  if (!result.ok) {
+    return result.field
+      ? {
+          status: "error",
+          message: "Password not changed.",
+          errors: { [result.field]: result.error },
+        }
+      : { status: "error", message: result.error };
+  }
+  return {
+    ...successState("Password changed."),
+    detail:
+      result.signedOut > 0
+        ? `Signed out ${result.signedOut} other session${result.signedOut === 1 ? "" : "s"}; this one stays signed in.`
+        : undefined,
+  };
 }
 
 export async function saveTaxRates(_previous: FormState, form: FormData): Promise<FormState> {

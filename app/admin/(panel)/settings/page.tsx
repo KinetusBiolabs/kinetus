@@ -4,7 +4,12 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { bpsToInput, centsToInput } from "@/lib/admin/forms";
 import { prisma } from "@/lib/db";
 import { DEFAULT_FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/shipping";
-import { ProductPageTextForm, StoreSettingsForm, TaxRatesForm } from "./SettingsForms";
+import {
+  ChangePasswordForm,
+  ProductPageTextForm,
+  StoreSettingsForm,
+  TaxRatesForm,
+} from "./SettingsForms";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -85,6 +90,7 @@ export default async function SettingsPage() {
           isActive: rate.isActive,
         }))}
       />
+      <ChangePasswordForm />
     </>
   );
 }
